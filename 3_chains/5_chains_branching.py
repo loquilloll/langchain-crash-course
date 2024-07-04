@@ -2,13 +2,13 @@ from dotenv import load_dotenv
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema.output_parser import StrOutputParser
 from langchain.schema.runnable import RunnableBranch
-from langchain_openai import ChatOpenAI
+from langchain_community.chat_models import ChatOllama
 
 # Load environment variables from .env
 load_dotenv()
 
 # Create a ChatOpenAI model
-model = ChatOpenAI(model="gpt-4o")
+model = ChatOllama(model="llama3")
 
 # Define prompt templates for different feedback types
 positive_feedback_template = ChatPromptTemplate.from_messages(
@@ -59,15 +59,15 @@ classification_template = ChatPromptTemplate.from_messages(
 # Define the runnable branches for handling feedback
 branches = RunnableBranch(
     (
-        lambda x: "positive" in x,
+        lambda x: "positive" in x, # type: ignore
         positive_feedback_template | model | StrOutputParser()  # Positive feedback chain
     ),
     (
-        lambda x: "negative" in x,
+        lambda x: "negative" in x, # type: ignore
         negative_feedback_template | model | StrOutputParser()  # Negative feedback chain
     ),
     (
-        lambda x: "neutral" in x,
+        lambda x: "neutral" in x, # type: ignore
         neutral_feedback_template | model | StrOutputParser()  # Neutral feedback chain
     ),
     escalate_feedback_template | model | StrOutputParser()

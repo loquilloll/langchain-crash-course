@@ -9,7 +9,7 @@ from langchain.text_splitter import (
 )
 from langchain_community.document_loaders import TextLoader
 from langchain_community.vectorstores import Chroma
-from langchain_openai import OpenAIEmbeddings
+from utils.fastembed import FastEmbedEmbeddings
 
 # Define the directory containing the text file
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -23,14 +23,17 @@ if not os.path.exists(file_path):
     )
 
 # Read the text content from the file
-loader = TextLoader(file_path)
+loader = TextLoader(file_path, encoding="utf-8")
 documents = loader.load()
 
 # Define the embedding model
-embeddings = OpenAIEmbeddings(
-    model="text-embedding-3-small"
+embeddings = FastEmbedEmbeddings( # type:ignore
+    model_name="BAAI/bge-small-en-v1.5"
 )  # Update to a valid embedding model if needed
-
+print("\n--- Finished creating embeddings ---")
+# embeddings = OpenAIEmbeddings(
+#     model="text-embedding-3-small"
+# )  # Update to a valid embedding model if needed
 
 # Function to create and persist vector store
 def create_vector_store(docs, store_name):

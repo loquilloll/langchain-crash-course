@@ -1,9 +1,16 @@
 import os
 
+import langchain
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.document_loaders import TextLoader
 from langchain_community.vectorstores import Chroma
-from langchain_openai import OpenAIEmbeddings
+from utils.fastembed import FastEmbedEmbeddings
+from langchain.embeddings.sentence_transformer import SentenceTransformerEmbeddings
+
+from chromadb.utils.batch_utils import create_batches
+from chromadb import PersistentClient
+from chromadb.utils.embedding_functions import create_langchain_embedding
+import uuid
 
 # Define the directory containing the text files and the persistent directory
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -31,7 +38,7 @@ if not os.path.exists(persistent_directory):
     documents = []
     for book_file in book_files:
         file_path = os.path.join(books_dir, book_file)
-        loader = TextLoader(file_path)
+        loader = TextLoader(file_path, encoding="utf-8")
         book_docs = loader.load()
         for doc in book_docs:
             # Add metadata to each document indicating its source
@@ -48,15 +55,38 @@ if not os.path.exists(persistent_directory):
 
     # Create embeddings
     print("\n--- Creating embeddings ---")
-    embeddings = OpenAIEmbeddings(
-        model="text-embedding-3-small"
+    
+    from fastembed import TextEmbedding
+
+    # Fast
+    embeddings = FastEmbedEmbeddings( # type:ignore
+        model_name="BAAI/bge-small-en-v1.5"
     )  # Update to a valid embedding model if needed
     print("\n--- Finished creating embeddings ---")
+    embedding_function = create_langchain_embedding(embeddings)
 
     # Create the vector store and persist it
     print("\n--- Creating and persisting vector store ---")
-    db = Chroma.from_documents(
-        docs, embeddings, persist_directory=persistent_directory)
+    client = PersistentClient(path=persistent_directory)
+    col = client.get_or_create_collection(
+        "my_collection",
+        embedding_function=embedding_function,
+    )
+    for batch in create_batches(
+        api=client,
+        ids=[str(uuid.uuid4()) for _ in range(len(docs))],
+        metadatas=[d.metadata for d in docs],
+        documents=[d.page_content for d in docs]
+
+    ):
+        col.add(*batch)
+
+    db = Chroma(
+        client=client,
+        collection_name=col.name,
+        embedding_function=embedding_function,
+        # persist_directory=persistent_directory
+    )
     print("\n--- Finished creating and persisting vector store ---")
 
 else:

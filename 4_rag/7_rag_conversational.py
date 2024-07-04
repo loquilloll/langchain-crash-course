@@ -6,7 +6,9 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_community.vectorstores import Chroma
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+# from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from utils.fastembed import FastEmbedEmbeddings
+from langchain_community.chat_models import ChatOllama
 
 # Load environment variables from .env
 load_dotenv()
@@ -16,21 +18,38 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 persistent_directory = os.path.join(current_dir, "db", "chroma_db_with_metadata")
 
 # Define the embedding model
-embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+embeddings = FastEmbedEmbeddings( # type:ignore
+    model_name="BAAI/bge-small-en-v1.5"
+)  # Update to a valid embedding model if needed
+# embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
 # Load the existing vector store with the embedding function
-db = Chroma(persist_directory=persistent_directory, embedding_function=embeddings)
+db = Chroma(persist_directory=persistent_directory,
+            collection_name="my_collection",
+            embedding_function=embeddings)
 
 # Create a retriever for querying the vector store
 # `search_type` specifies the type of search (e.g., similarity)
 # `search_kwargs` contains additional arguments for the search (e.g., number of results to return)
+# retriever = db.as_retriever(
+#     search_type="similarity",
+#     search_kwargs={"k": 3},
+# )
+# retriever = db.as_retriever(
+#     search_type="mmr",
+#     search_kwargs={"k": 3, "fetch_k": 20, "lambda_mult": 0.5},
+# )
 retriever = db.as_retriever(
-    search_type="similarity",
-    search_kwargs={"k": 3},
+    search_type="similarity_score_threshold",
+    search_kwargs={"k": 3, "score_threshold": 0.1},
 )
 
 # Create a ChatOpenAI model
-llm = ChatOpenAI(model="gpt-4o")
+llm = ChatOllama(
+    model="llama3",
+    base_url=os.getenv('OLLAMA_SERVER_URL', "http://localhost:11434")
+)
+# llm = ChatOpenAI(model="gpt-4o")
 
 # Contextualize question prompt
 # This system prompt helps the AI understand that it should reformulate the question
@@ -88,23 +107,34 @@ question_answer_chain = create_stuff_documents_chain(llm, qa_prompt)
 rag_chain = create_retrieval_chain(history_aware_retriever, question_answer_chain)
 
 
-# Function to simulate a continual chat
-def continual_chat():
-    print("Start chatting with the AI! Type 'exit' to end the conversation.")
-    chat_history = []  # Collect chat history here (a sequence of messages)
-    while True:
-        query = input("You: ")
-        if query.lower() == "exit":
-            break
-        # Process the user's query through the retrieval chain
-        result = rag_chain.invoke({"input": query, "chat_history": chat_history})
-        # Display the AI's response
-        print(f"AI: {result['answer']}")
-        # Update the chat history
-        chat_history.append(HumanMessage(content=query))
-        chat_history.append(SystemMessage(content=result["answer"]))
+# # Function to simulate a continual chat
+# def continual_chat():
+#     print("Start chatting with the AI! Type 'exit' to end the conversation.")
+#     chat_history = []  # Collect chat history here (a sequence of messages)
+#     while True:
+#         query = input("You: ")
+#         if query.lower() == "exit":
+#             break
+#         # Process the user's query through the retrieval chain
+#         result = rag_chain.invoke({"input": query, "chat_history": chat_history})
+#         # Display the AI's response
+#         print(f"AI: {result['answer']}")
+#         for i,doc in enumerate(result['context']):
+#             print(f"Document {i}:\n{doc.page_content}\n")
+#             print(f"Source: {doc.metadata['source']}\n")
+#         # Update the chat history
+#         chat_history.append(HumanMessage(content=query))
+#         chat_history.append(SystemMessage(content=result["answer"]))
+
+# Process the user's query through the retrieval chain
+result = rag_chain.invoke({"input": "How did Juliet die?", "chat_history": []})
+# Display the AI's response
+for i,doc in enumerate(result['context']):
+    print(f"Document {i}:\n{doc.page_content}\n")
+    print(f"Source: {doc.metadata['source']}\n")
+print(f"AI: {result['answer']}")
 
 
 # Main function to start the continual chat
-if __name__ == "__main__":
-    continual_chat()
+# if __name__ == "__main__":
+#     continual_chat()

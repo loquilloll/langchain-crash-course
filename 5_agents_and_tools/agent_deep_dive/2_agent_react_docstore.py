@@ -9,7 +9,10 @@ from langchain_community.vectorstores import Chroma
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.tools import Tool
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+# from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+# from langchain_openai import ChatOpenAI
+from langchain_community.chat_models import ChatOllama
+from utils.fastembed import FastEmbedEmbeddings
 
 # Load environment variables from .env file
 load_dotenv()
@@ -23,6 +26,7 @@ persistent_directory = os.path.join(db_dir, "chroma_db_with_metadata")
 if os.path.exists(persistent_directory):
     print("Loading existing vector store...")
     db = Chroma(persist_directory=persistent_directory,
+                collection_name="my_collection",
                 embedding_function=None)
 else:
     raise FileNotFoundError(
@@ -30,10 +34,14 @@ else:
     )
 
 # Define the embedding model
-embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+embeddings = FastEmbedEmbeddings( # type:ignore
+    model_name="BAAI/bge-small-en-v1.5"
+)  # Update to a valid embedding model if needed
+# embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
 # Load the existing vector store with the embedding function
 db = Chroma(persist_directory=persistent_directory,
+            collection_name="my_collection",
             embedding_function=embeddings)
 
 # Create a retriever for querying the vector store
@@ -45,7 +53,12 @@ retriever = db.as_retriever(
 )
 
 # Create a ChatOpenAI model
-llm = ChatOpenAI(model="gpt-4o")
+llm = ChatOllama(
+    # model="llama3-chatqa",
+    model="llama3",
+    base_url=os.getenv('OLLAMA_SERVER_URL', "http://localhost:11434"),
+)
+# llm = ChatOpenAI(model="gpt-4o")
 
 # Contextualize question prompt
 # This system prompt helps the AI understand that it should reformulate the question
@@ -126,7 +139,7 @@ agent = create_react_agent(
 )
 
 agent_executor = AgentExecutor.from_agent_and_tools(
-    agent=agent, tools=tools, handle_parsing_errors=True, verbose=True,
+    agent=agent, tools=tools, handle_parsing_errors=True, verbose=True, # type: ignore
 )
 
 chat_history = []

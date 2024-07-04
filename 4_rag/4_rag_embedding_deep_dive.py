@@ -1,10 +1,10 @@
 import os
 
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.document_loaders import TextLoader
 from langchain_community.vectorstores import Chroma
-from langchain_openai import OpenAIEmbeddings
+from utils.fastembed import FastEmbedEmbeddings
 
 # Define the directory containing the text file and the persistent directory
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -18,13 +18,12 @@ if not os.path.exists(file_path):
     )
 
 # Read the text content from the file
-loader = TextLoader(file_path)
+loader = TextLoader(file_path, encoding="utf-8")
 documents = loader.load()
 
 # Split the document into chunks
 text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
 docs = text_splitter.split_documents(documents)
-
 # Display information about the split documents
 print("\n--- Document Chunks Information ---")
 print(f"Number of document chunks: {len(docs)}")
@@ -50,8 +49,11 @@ def create_vector_store(docs, embeddings, store_name):
 # Note: The cost of using OpenAI embeddings will depend on your OpenAI API usage and pricing plan.
 # Pricing: https://openai.com/api/pricing/
 print("\n--- Using OpenAI Embeddings ---")
-openai_embeddings = OpenAIEmbeddings(model="text-embedding-ada-002")
-create_vector_store(docs, openai_embeddings, "chroma_db_openai")
+# openai_embeddings = OpenAIEmbeddings(model="text-embedding-ada-002")
+embeddings = FastEmbedEmbeddings( # type:ignore
+    model_name="BAAI/bge-small-en-v1.5"
+)  # Update to a valid embedding model if needed
+create_vector_store(docs, embeddings, "chroma_db_openai")
 
 # 2. Hugging Face Transformers
 # Uses models from the Hugging Face library.
@@ -60,7 +62,8 @@ create_vector_store(docs, openai_embeddings, "chroma_db_openai")
 # Note: Find other models at https://huggingface.co/models?other=embeddings
 print("\n--- Using Hugging Face Transformers ---")
 huggingface_embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-mpnet-base-v2"
+    model_name="sentence-transformers/all-mpnet-base-v2",
+    model_kwargs = {'device': 'cuda'}
 )
 create_vector_store(docs, huggingface_embeddings, "chroma_db_huggingface")
 
@@ -95,7 +98,7 @@ def query_vector_store(store_name, query, embedding_function):
 query = "Who is Odysseus' wife?"
 
 # Query each vector store
-query_vector_store("chroma_db_openai", query, openai_embeddings)
+query_vector_store("chroma_db_openai", query, embeddings)
 query_vector_store("chroma_db_huggingface", query, huggingface_embeddings)
 
 print("Querying demonstrations completed.")

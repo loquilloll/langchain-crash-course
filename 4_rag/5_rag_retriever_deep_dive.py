@@ -2,7 +2,7 @@ import os
 
 from dotenv import load_dotenv
 from langchain_community.vectorstores import Chroma
-from langchain_openai import OpenAIEmbeddings
+from utils.fastembed import FastEmbedEmbeddings
 
 load_dotenv()
 
@@ -12,10 +12,13 @@ db_dir = os.path.join(current_dir, "db")
 persistent_directory = os.path.join(db_dir, "chroma_db_with_metadata")
 
 # Define the embedding model
-embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+embeddings = FastEmbedEmbeddings( # type:ignore
+    model_name="BAAI/bge-small-en-v1.5"
+)  # Update to a valid embedding model if needed
 
 # Load the existing vector store with the embedding function
 db = Chroma(persist_directory=persistent_directory,
+            collection_name="my_collection",
             embedding_function=embeddings)
 
 
@@ -27,6 +30,7 @@ def query_vector_store(
         print(f"\n--- Querying the Vector Store {store_name} ---")
         db = Chroma(
             persist_directory=persistent_directory,
+            collection_name="my_collection",
             embedding_function=embedding_function,
         )
         retriever = db.as_retriever(

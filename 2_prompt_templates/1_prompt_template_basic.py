@@ -22,7 +22,7 @@ from langchain_core.messages import HumanMessage
 # print(prompt)
 
 
-# PART 3: Prompt with System and Human Messages (Using Tuples)
+# # PART 3: Prompt with System and Human Messages (Using Tuples)
 # messages = [
 #     ("system", "You are a comedian who tells jokes about {topic}."),
 #     ("human", "Tell me {joke_count} jokes."),

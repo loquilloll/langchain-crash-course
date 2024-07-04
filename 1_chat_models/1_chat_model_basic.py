@@ -2,13 +2,13 @@
 # OpenAI Chat Model Documents: https://python.langchain.com/v0.2/docs/integrations/chat/openai/
 
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
+from langchain_community.chat_models import ChatOllama
 
 # Load environment variables from .env
 load_dotenv()
 
-# Create a ChatOpenAI model
-model = ChatOpenAI(model="gpt-4o")
+# Create a ChatOllama model
+model = ChatOllama(model="llama3")
 
 # Invoke the model with a message
 result = model.invoke("What is 81 divided by 9?")

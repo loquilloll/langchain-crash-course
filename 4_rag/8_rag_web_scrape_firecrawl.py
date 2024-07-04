@@ -2,9 +2,12 @@ import os
 
 from dotenv import load_dotenv
 from langchain.text_splitter import CharacterTextSplitter
-from langchain_community.document_loaders import FireCrawlLoader
+# from langchain_community.document_loaders import FireCrawlLoader
+from utils.firecrawl import FireCrawlLoader
 from langchain_community.vectorstores import Chroma
-from langchain_openai import OpenAIEmbeddings
+# from langchain_openai import OpenAIEmbeddings
+from utils.fastembed import FastEmbedEmbeddings
+from utils.firecrawl import FireCrawlLoader
 
 # Load environment variables from .env
 load_dotenv()
@@ -18,14 +21,16 @@ persistent_directory = os.path.join(db_dir, "chroma_db_firecrawl")
 def create_vector_store():
     """Crawl the website, split the content, create embeddings, and persist the vector store."""
     # Define the Firecrawl API key
-    api_key = os.getenv("FIRECRAWL_API_KEY")
-    if not api_key:
-        raise ValueError("FIRECRAWL_API_KEY environment variable not set")
+    # api_key = os.getenv("FIRECRAWL_API_KEY")
+    # if not api_key:
+    #     raise ValueError("FIRECRAWL_API_KEY environment variable not set")
 
     # Step 1: Crawl the website using FireCrawlLoader
     print("Begin crawling the website...")
     loader = FireCrawlLoader(
-        api_key=api_key, url="https://apple.com", mode="scrape")
+        # api_key=api_key, url="https://apple.com", mode="scrape")
+        api_url="http://localhost:3002",
+         url="https://apple.com", mode="scrape")
     docs = loader.load()
     print("Finished crawling the website.")
 
@@ -45,7 +50,10 @@ def create_vector_store():
     print(f"Sample chunk:\n{split_docs[0].page_content}\n")
 
     # Step 3: Create embeddings for the document chunks
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+    embeddings = FastEmbedEmbeddings( # type:ignore
+        model_name="BAAI/bge-small-en-v1.5"
+    )  # Update to a valid embedding model if needed
+    # embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
     # Step 4: Create and persist the vector store with the embeddings
     print(f"\n--- Creating vector store in {persistent_directory} ---")
@@ -63,7 +71,10 @@ else:
         f"Vector store {persistent_directory} already exists. No need to initialize.")
 
 # Load the vector store with the embeddings
-embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+embeddings = FastEmbedEmbeddings( # type:ignore
+    model_name="BAAI/bge-small-en-v1.5"
+)  # Update to a valid embedding model if needed
+# embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 db = Chroma(persist_directory=persistent_directory,
             embedding_function=embeddings)
 

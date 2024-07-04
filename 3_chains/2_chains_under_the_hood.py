@@ -1,13 +1,13 @@
 from dotenv import load_dotenv
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema.runnable import RunnableLambda, RunnableSequence
-from langchain_openai import ChatOpenAI
+from langchain_community.chat_models import ChatOllama
 
 # Load environment variables from .env
 load_dotenv()
 
 # Create a ChatOpenAI model
-model = ChatOpenAI(model="gpt-4")
+model = ChatOllama(model="llama3")
 
 # Define prompt templates
 prompt_template = ChatPromptTemplate.from_messages(

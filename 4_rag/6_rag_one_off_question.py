@@ -3,7 +3,9 @@ import os
 from dotenv import load_dotenv
 from langchain_community.vectorstores import Chroma
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+# from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from utils.fastembed import FastEmbedEmbeddings
+from langchain_community.chat_models import ChatOllama
 
 # Load environment variables from .env
 load_dotenv()
@@ -14,19 +16,24 @@ persistent_directory = os.path.join(
     current_dir, "db", "chroma_db_with_metadata")
 
 # Define the embedding model
-embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+embeddings = FastEmbedEmbeddings( # type:ignore
+    model_name="BAAI/bge-small-en-v1.5"
+)  # Update to a valid embedding model if needed
+# embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
 # Load the existing vector store with the embedding function
 db = Chroma(persist_directory=persistent_directory,
+            collection_name="my_collection",
             embedding_function=embeddings)
 
 # Define the user's question
-query = "How can I learn more about LangChain?"
+# query = "How can I learn more about LangChain?"
+query = "How did Juliet Die in the play \"Romeo and Juliet\"? Keep your answer concise and short."
 
 # Retrieve relevant documents based on the query
 retriever = db.as_retriever(
     search_type="similarity",
-    search_kwargs={"k": 1},
+    search_kwargs={"k": 5},
 )
 relevant_docs = retriever.invoke(query)
 
@@ -45,7 +52,11 @@ combined_input = (
 )
 
 # Create a ChatOpenAI model
-model = ChatOpenAI(model="gpt-4o")
+# model = ChatOpenAI(model="gpt-4o")
+model = ChatOllama(
+    model="llama3",
+    base_url=os.getenv('OLLAMA_SERVER_URL', "http://localhost:11434")
+)
 
 # Define the messages for the model
 messages = [
